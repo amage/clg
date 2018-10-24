@@ -12,7 +12,10 @@ use piston::window::WindowSettings;
 use rand::Rng;
 
 const WIDTH: usize = 320;
-const HEIGHT: usize = 240;
+const HEIGHT: usize = 200;
+const BACKGROUND: [f32; 4] = [0.1, 0.5, 0.1, 1.0];
+const COLOR: [f32; 4] = [0.0, 0.9, 0.0, 1.0];
+const RATE: f64 = 60.0;
 
 pub struct App {
     field: [i32; WIDTH * HEIGHT],
@@ -25,9 +28,6 @@ impl App {
     fn render(&mut self, args: &RenderArgs) {
         use graphics::*;
 
-        const BACKGROUND: [f32; 4] = [0.1, 0.5, 0.1, 1.0];
-        const COLOR: [f32; 4] = [0.0, 0.9, 0.0, 1.0];
-
         let c_width = args.width as f64 / WIDTH as f64;
         let c_height = args.height as f64 / HEIGHT as f64;
 
@@ -38,7 +38,8 @@ impl App {
             for i in 0..HEIGHT {
                 for j in 0..WIDTH {
                     if field[i * WIDTH + j] > 0 {
-                        let transform = c.transform
+                        let transform = c
+                            .transform
                             .trans(c_width * (j as f64), c_height * (i as f64));
                         rectangle(COLOR, live_req, transform, gl);
                     }
@@ -84,14 +85,13 @@ impl App {
         if !self.run {
             return;
         }
-        const RATE: f64 = 60.0;
         self.time += args.dt;
         let full_sec = (self.time * RATE) as u32;
         if full_sec == 0 {
             return;
         }
+        let mut new_field = [0; WIDTH * HEIGHT];
         for _ in 0..full_sec {
-            let mut new_field = [0; WIDTH * HEIGHT];
             for i in 0..HEIGHT {
                 for j in 0..WIDTH {
                     let around = self.calc_around(i, j);
@@ -102,19 +102,31 @@ impl App {
                             1
                         }
                     } else {
-                        around == 3
-                        // if around == 3 {
-                        //     1
-                        // } else {
-                        //     0
-                        // }
+                        // around == 3
+                        if around == 3 {
+                            1
+                        } else {
+                            0
+                        }
                     }
                 }
             }
+            let mut tmp = self.field;
             self.field = new_field;
+            new_field = tmp;
         }
         self.time -= full_sec as f64 / RATE;
     }
+}
+
+fn generate_field() -> [i32; WIDTH * HEIGHT] {
+    let mut game_field: [i32; WIDTH * HEIGHT] = [0; WIDTH * HEIGHT];
+    let mut rnd = rand::thread_rng();
+
+    for i in 0..game_field.len() {
+        game_field[i] = rnd.gen_range(0, 2);
+    }
+    game_field
 }
 
 fn main() {
@@ -129,15 +141,10 @@ fn main() {
             .build()
             .unwrap();
 
-    let mut rnd = rand::thread_rng();
-    let mut game_field: [i32; WIDTH * HEIGHT] = [0; WIDTH * HEIGHT];
-    for i in 0..game_field.len() {
-        game_field[i] = rnd.gen_range(0, 2);
-    }
     let mut app = App {
         gl: GlGraphics::new(opengl),
         run: false,
-        field: game_field,
+        field: generate_field(),
         time: 0.0,
     };
 
